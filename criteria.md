@@ -29,6 +29,8 @@ tool calls and returns a fit card — in at least 4 of 5 tries.
      "my search is a plain keyword match and some phrasings will miss" is a
      real answer. -->
 
+The search depends on the wording of the query, so some matching queries may still fail to find a result if the keywords do not match the listing data closely enough. After a result is found, the agent continues to suggest_outfit and create_fit_card, but these steps include model calls and can vary because TEMPERATURE is set to 0.9. Because of these possible variations, I think 4 out of 5 is a reasonable target instead of 5 out of 5.
+
 ---
 
 ## 2. An impossible query stops before the second tool
@@ -39,6 +41,8 @@ Given a query that matches no listings, the agent stops before calling
 **Why this target:**
 <!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
      about this path? -->
+
+When search_listings returns no results, the agent has a direct code path that sets an error message and returns the session before reaching suggest_outfit. There is no model call or random choice needed to decide whether to continue, so the same behavior should happen every time. This makes 5 out of 5 a reasonable target.
 
 ---
 
@@ -54,10 +58,10 @@ Given a query that matches no listings, the agent stops before calling
      compares session["selected_item"] against what actually reached
      suggest_outfit is the shape you're after. -->
 
-
+In 5 out of 5 matching query runs, the id of session["selected_item"] should be the same as the id of the item passed to suggest_outfit.
 
 **Why this target:**
-
+The agent sets session["selected_item"] directly from the first search result, and then passes that same item to suggest_outfit. There is no model call or random choice between these steps that could change the item, so I expect this to pass 5 out of 5 times.
 
 
 ---
@@ -75,11 +79,11 @@ Given a query that matches no listings, the agent stops before calling
      sentence? A card longer than a caption anyone would post? Any of those can
      be turned into a number. -->
 
-
+In 5 out of 5 runs, the fit card should mention the selected item's price and platform, and it should be 2 to 4 sentences long. The price counts as mentioned if it appears as a dollar formatted value such as $38.00 or $38.
 
 **Why this target:**
 
-
+The create_fit_card prompt tells the model to include the item's price and platform, so these are specific things the model is being asked to include. The wording can still change because TEMPERATURE is set to 0.9, but I expect the required information to stay in the response and since this is an explicit formatting instruction rather than open-ended content, I expect the model to follow it reliably even at a high temperature.
 
 ---
 
@@ -92,11 +96,11 @@ Given a query that matches no listings, the agent stops before calling
      search respects a price ceiling — anything, as long as it names a number
      or an observable outcome. -->
 
-
+When the wardrobe is empty, the agent should still give a non-empty outfit suggestion in 5 out of 5 runs.
 
 **Why this target:**
 
-
+The empty wardrobe case is handled by suggest_outfit with a prompt asking for general styling advice instead of using wardrobe items. This means the tool still has something to generate when the wardrobe is empty, so I expect it to return an outfit suggestion in all 5 runs.
 
 ---
 
