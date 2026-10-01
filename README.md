@@ -57,6 +57,28 @@
      on, and if you don't decide it here you'll discover it as a crash in
      Milestone 5. -->
 
+
+### `search_listings`
+
+- **What it does:** Searches the 40 listings for items matching keywords in the description, an optional size, and an optional max price, returning the best matches first.
+- **Inputs:** `description` (str), `size` (str or None), `max_price` (float or None)
+- **Returns:** A list of listing dicts, best match first (keyword-overlap score), each with: `id, title, description, category, style_tags, size, condition, price, colors, brand, platform`. Capped at `config.SEARCH_RESULT_LIMIT`.
+- **When it has nothing:** Returns `[]` — an empty list, never `None`, never raises.
+
+### `suggest_outfit`
+
+- **What it does:** Given a thrifted item and the user's wardrobe, asks the model for outfit combinations using pieces the user already owns.
+- **Inputs:** `new_item` (dict, a listing), `wardrobe` (dict with an `items` key)
+- **Returns:** A non-empty string of outfit suggestions.
+- **When it has nothing:** If `wardrobe["items"]` is empty, returns general styling advice instead of outfit combinations — never an empty string, never raises.
+
+### `create_fit_card`
+
+- **What it does:** Writes a 2-4 sentence social-caption-style blurb for the item and outfit.
+- **Inputs:** `outfit` (str), `new_item` (dict, a listing)
+- **Returns:** A short caption string mentioning the item, price, and platform once each.
+- **When it has nothing:** If `outfit` is empty/whitespace, returns a descriptive fallback message instead of raising or returning `""`.
+
 ### `search_listings`
 
 - **What it does:**
@@ -92,6 +114,15 @@
 
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
+
+**Branch rule:** If `search_listings` returns an empty list, put a message in `session["error"]` naming what the user could change, and stop. Otherwise, take the first result as `session["selected_item"]` and continue to `suggest_outfit`.
+
+**Where it lives:** `agent.py::run_agent`
+
+**How the query is parsed:** Regex — a `$NN` or `$NN.NN` pattern for `max_price`, a `size <token>` pattern for `size`, with both substrings stripped out of the remainder to form `description`.
+
+**What moves through the session:** `parsed` → `search_results` → `selected_item` → `outfit_suggestion` → `fit_card`, in that order, each read back out of `session` before being passed to the next tool.
+
 
 **Branch rule:**
 
