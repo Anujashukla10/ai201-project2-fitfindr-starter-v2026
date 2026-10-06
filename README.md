@@ -121,8 +121,7 @@
 
 **How the query is parsed:** Regex — a `$NN` or `$NN.NN` pattern for `max_price`, a `size <token>` pattern for `size`, with both substrings stripped out of the remainder to form `description`.
 
-**What moves through the session:** `parsed` → `search_results` → `selected_item` → `outfit_suggestion` → `fit_card`, in that order, each read back out of `session` before being passed to the next tool.
-
+**What moves through the session:** `parsed` → `search_results` → `selected_item` → `outfit_suggestion` → `fit_card`, each read back out of `session` before being passed to the next tool.
 
 **Branch rule:**
 
@@ -144,8 +143,39 @@
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
 
+Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+Outfit:   Here are two specific outfit combinations using the new Y2K Butterfly Baby Tee and pieces from your existing wardrobe:
+
+Outfit 1: Streetwear Contrast
+- Top: Y2K Butterfly Baby Tee
+- Bottoms: Baggy straight-leg jeans (dark wash)
+- Footwear: Chunky white sneakers
+- Outerwear: Black cropped zip hoodie
+- Accessories: Black crossbody bag
+
+Outfit 2: Sweet & Grunge
+- Top: Y2K Butterfly Baby Tee
+- Bottoms: Wide-leg khaki trousers
+- Footwear: Black combat boots
+- Outerwear: Vintage black denim jacket
+- Accessories: Brown leather belt
+
+Fit card: Just scored the ultimate Y2K butterfly baby tee on Depop for only
+$18! Obsessed with how easy it is to style—already planning to wear it with
+baggy denim and sneakers, or grunge it up with some combat boots. Secondhand
+wins forever. 🦋✨
+```
+
+**The empty-search branch, for comparison**
+
+```
+$ python app.py ask 'designer ballgown size XXS under $5'
+
+No listings matched. Try raising the price ceiling, loosening the size, or
+using different keywords.
 ```
 
 **The three tools, tested one at a time**
