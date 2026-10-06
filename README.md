@@ -38,8 +38,16 @@
 <!-- ═══════════════════════ UNIT 3 — THE BUILD ═══════════════════════ -->
 
 ## What This Does
-
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
+
+A user describes what they're looking for in plain language — "a vintage
+graphic tee under $30" — and FitFindr searches 40 secondhand listings for
+the best match, suggests one or two outfits that combine it with pieces
+already in the user's wardrobe, and writes a short, postable caption for the
+find. If nothing in the listings matches, it stops before trying to build an
+outfit and tells the user what to change — a looser size, a higher price
+ceiling, or different keywords — instead of guessing.
+
 
 
 
@@ -232,14 +240,26 @@ them with my favorite white sneakers for the ultimate effortless weekend fit.
 **Moment 1**
 
 - *What I asked for:*
+Help implementing search_listings' size filter.
+
 - *What came back:*
+A warning that a plain substring check would cause false matches — e.g. "s" in "us 9" is True, so searching for size S could wrongly return a shoe listed as "US 9." The fix was a token-based comparison (_size_matches), splitting both strings into whole words and checking for overlap instead of substring containment.
+
 - *What I changed:*
+Used _tokenize() + set intersection for size matching instead of a in substring check, so "M" matches "S/M" but doesn't falsely match inside "US 9" or "XL."
+
 
 **Moment 2**
 
 - *What I asked for:*
+Help wiring run_agent()'s branch so an empty search stops before calling suggest_outfit.
+
 - *What came back:*
+Code that checks if not results: right after search_listings, sets session["error"], and returns early — with trace.step() calls added so I could watch each stage fire.
+
 - *What I changed:*
+Ran python agent.py and confirmed from the trace output that the impossible query ("designer ballgown size XXS under $5") stopped after step 2 with fit_card still None, while the matching query ran all 4 steps — which is how I verified the branch was really doing something rather than just looking right in the code.
+
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
