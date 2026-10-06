@@ -17,7 +17,7 @@ import re
 
 import config
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card
+from tools import search_listings, suggest_outfit, create_fit_card, compare_price
 from generate import ModelUnavailable
 
 
@@ -43,6 +43,7 @@ def new_session(query: str, wardrobe: dict) -> dict:
         "search_results": [],        # everything search_listings returned
         "selected_item": None,       # the one you chose — goes into suggest_outfit
         "wardrobe": wardrobe,        # the user's wardrobe
+        "price_comparison": None,    # STRETCH — what compare_price returned, if it ran
         "outfit_suggestion": None,   # what suggest_outfit returned
         "fit_card": None,            # what create_fit_card returned
         "error": None,               # set when the run ended early
@@ -90,6 +91,58 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     Returns:
         The session dict. **Check session["error"] first** — if it isn't None,
         the run ended early and the later fields will still be None.
+
+    ─────────────────────────────────────────────────────────────────────────
+    TODO — build this, following the branch rule you wrote in Milestone 2.
+
+      1. Start a session with new_session().
+
+      2. Count the times round the loop, and call trace.check_iterations(count)
+         on each one before you go again. It raises when the count passes
+         MAX_ITERATIONS in config.py — see trace.py.
+
+      3. Parse the query into a description, a size, and a max_price. Regex,
+         string splitting, or asking the model are all fine — say which you
+         chose in your README. Put the result in session["parsed"].
+
+      4. Call search_listings() with what you parsed.
+         Put the results in session["search_results"].
+
+         ⚠️ THIS IS THE BRANCH. If nothing came back:
+              - put a message in session["error"] saying what the user could
+                change — "No results" is not that message
+              - return the session
+              - do NOT call suggest_outfit with nothing
+
+      5. Choose an item — the first result is fine. Put it in
+         session["selected_item"].
+
+      6. Call suggest_outfit() with the selected item and the wardrobe.
+         Put the result in session["outfit_suggestion"].
+
+      7. Call create_fit_card() with the outfit and the item.
+         Put the result in session["fit_card"].
+
+      8. Return the session.
+
+    ─────────────────────────────────────────────────────────────────────────
+    IN UNIT 4 you come back and add two things:
+
+      • Trace calls. One per step. `trace.step("search_listings", inputs=...,
+        returned=...)` — see trace.py. Your README needs the output.
+
+      • A handler for ModelUnavailable, so a bad key produces a message rather
+        than a stack trace. The import is already at the top of this file.
+
+    ─────────────────────────────────────────────────────────────────────────
+    STRETCH — second branch (this unit, optional, for extra credit):
+
+      After selecting an item, if three or more results came back, call the
+      new compare_price() tool and store its verdict in
+      session["price_comparison"]. With fewer than three results there isn't
+      enough in the category to compare against, so the loop skips that call
+      entirely rather than running it on nothing — same shape as the
+      empty-search branch, just a different condition.
     """
     session = new_session(query, wardrobe)
     iterations = 0
@@ -107,7 +160,11 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         session["search_results"] = results
         trace.step("search_listings", inputs=parsed, returned=results)
 
-        # ⚠️ THIS IS THE BRANCH.
+        # ⚠️ THIS IS THE BRANCH. If nothing came back:
+        #      - put a message in session["error"] saying what the user could
+        #        change — "No results" is not that message
+        #      - return the session
+        #      - do NOT call suggest_outfit with nothing
         if not results:
             session["error"] = (
                 "No listings matched. Try raising the price ceiling, "
@@ -120,6 +177,26 @@ def run_agent(query: str, wardrobe: dict) -> dict:
             return session
 
         session["selected_item"] = results[0]
+
+        # STRETCH — second branch: only compare prices when there's enough in
+        # the category to compare against. Fewer than three results means
+        # compare_price would have nothing meaningful to average, so the loop
+        # takes the other path instead of calling it on an empty comparison set.
+        iterations += 1
+        trace.check_iterations(iterations)
+        if len(results) >= 3:
+            comparison = compare_price(session["selected_item"], results)
+            session["price_comparison"] = comparison
+            trace.step(
+                "compare_price",
+                inputs={"result_count": len(results)},
+                returned=comparison,
+            )
+        else:
+            trace.step(
+                "branch",
+                note=f"only {len(results)} result(s) — skipping compare_price",
+            )
 
         iterations += 1
         trace.check_iterations(iterations)
@@ -144,36 +221,4 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     return session
 
 
-# ── running it directly ───────────────────────────────────────────────────────
-
-def _show(session: dict) -> None:
-    if session["error"]:
-        print(f"  stopped: {session['error']}")
-        print(f"  fit_card is {session['fit_card']!r} — it should still be None here")
-        return
-
-    item = session["selected_item"] or {}
-    print(f"  found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
-    print(f"  outfit:   {session['outfit_suggestion']}")
-    print(f"  fit card: {session['fit_card']}")
-
-
-if __name__ == "__main__":
-    from utils.data_loader import get_example_wardrobe
-
-    print("=== A query the data can match ===")
-    _show(run_agent(
-        query="looking for a vintage graphic tee under $30",
-        wardrobe=get_example_wardrobe(),
-    ))
-
-    print("\n=== A query it can't ===")
-    _show(run_agent(
-        query="designer ballgown size XXS under $5",
-        wardrobe=get_example_wardrobe(),
-    ))
-
-    print(
-        "\nThe second one should stop before the fit card. If both paths look "
-        "the same,\nthe branch isn't doing anything yet."
-    )
+# ── running it directly ────────────────────────────────────────────

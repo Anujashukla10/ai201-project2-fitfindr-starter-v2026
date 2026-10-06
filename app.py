@@ -136,12 +136,38 @@ def _ask_one(query, wardrobe, use_trace):
 
 
 def cmd_ask(args):
-    from utils.data_loader import get_example_wardrobe, get_empty_wardrobe
+    from utils.data_loader import (
+        get_example_wardrobe, get_empty_wardrobe,
+        load_saved_wardrobe, save_wardrobe,
+    )
     import generate
 
-    wardrobe = get_empty_wardrobe() if args.empty_wardrobe else get_example_wardrobe()
     if args.empty_wardrobe:
+        wardrobe = get_empty_wardrobe()
         print("(running with an empty wardrobe)")
+    else:
+        saved = load_saved_wardrobe()
+        wardrobe = saved if saved is not None else get_example_wardrobe()
+        if saved is not None:
+            print("(loaded your saved wardrobe from a previous run)")
+
+    if args.add_item:
+        parts = args.add_item.split("|")
+        if len(parts) != 4:
+            print('--add-item needs the shape "name|category|colors|style_tags"')
+            sys.exit(1)
+        name, category, colors, tags = parts
+        new_item = {
+            "id": f"w_custom_{len(wardrobe['items']) + 1}",
+            "name": name.strip(),
+            "category": category.strip(),
+            "colors": [c.strip() for c in colors.split(",")],
+            "style_tags": [t.strip() for t in tags.split(",")],
+            "notes": None,
+        }
+        wardrobe["items"].append(new_item)
+        save_wardrobe(wardrobe)
+        print(f"(added '{name.strip()}' to your saved wardrobe — it will persist in future runs)")
 
     try:
         if args.query:
@@ -188,6 +214,12 @@ def build_parser():
         "--empty-wardrobe",
         action="store_true",
         help="run as a user with nothing saved — one of unit 4's failure modes",
+    )
+    p_ask.add_argument(
+        "--add-item",
+        help='Add an item to your saved wardrobe before asking, as '
+             '"name|category|colors|style_tags" (colors/tags comma-separated). '
+             'Persists to data/saved_wardrobe.json for future runs — stretch feature.',
     )
     p_ask.set_defaults(func=cmd_ask)
 

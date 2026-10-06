@@ -6,11 +6,14 @@ the files each time.
 
 import json
 import os
+import json as _json
+from pathlib import Path as _Path
 from typing import Optional
+
 
 # Resolve the path to the data directory relative to this file
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-
+_SAVED_WARDROBE_PATH = _Path(__file__).parent.parent / "data" / "saved_wardrobe.json"
 
 def load_listings() -> list[dict]:
     """
@@ -95,3 +98,17 @@ if __name__ == "__main__":
     wardrobe = get_example_wardrobe()
     print(f"\nExample wardrobe has {len(wardrobe['items'])} items.")
     print(f"First item: {wardrobe['items'][0]['name']}")
+
+def save_wardrobe(wardrobe: dict) -> None:
+    """
+    STRETCH FEATURE — style memory.
+    Persist a wardrobe dict to disk so a later run can load the same one.
+    """
+    _SAVED_WARDROBE_PATH.write_text(_json.dumps(wardrobe, indent=2), encoding="utf-8")
+
+
+def load_saved_wardrobe() -> dict | None:
+    """Return the previously saved wardrobe, or None if nothing's been saved yet."""
+    if not _SAVED_WARDROBE_PATH.exists():
+        return None
+    return _json.loads(_SAVED_WARDROBE_PATH.read_text(encoding="utf-8"))

@@ -240,3 +240,40 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
         f"like a real post, not a product listing."
     )
     return generate(prompt)
+
+# ── Tool 4 (stretch): compare_price ───────────────────────────────────────────
+
+def compare_price(item: dict, listings: list[dict]) -> str:
+    """
+    STRETCH FEATURE — a fourth tool.
+
+    Compares one item's price against the average price of other listings in
+    the same category, to say whether it's a good deal.
+
+    Args:
+        item:     the listing dict being considered (usually session["selected_item"]).
+        listings: the listings to compare against — usually session["search_results"].
+
+    Returns:
+        A one-sentence verdict, e.g. "$18.00 vs. category average $22.50 —
+        a great deal." If there's nothing else in the same category to
+        compare against, says so instead of dividing by zero.
+    """
+    same_category = [
+        l["price"] for l in listings
+        if l["category"] == item["category"] and l["id"] != item["id"]
+    ]
+    if not same_category:
+        return f"No comparable {item['category']} items in this result set to compare against."
+
+    avg = sum(same_category) / len(same_category)
+    diff = item["price"] - avg
+
+    if diff < -5:
+        verdict = "a great deal"
+    elif abs(diff) <= 5:
+        verdict = "fairly priced"
+    else:
+        verdict = "a bit pricier than average"
+
+    return f"${item['price']:.2f} vs. category average ${avg:.2f} — {verdict}."
