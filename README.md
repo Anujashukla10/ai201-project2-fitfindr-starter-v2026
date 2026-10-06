@@ -48,9 +48,6 @@ find. If nothing in the listings matches, it stops before trying to build an
 outfit and tells the user what to change — a looser size, a higher price
 ceiling, or different keywords — instead of guessing.
 
-
-
-
 ---
 
 ## Tool Inventory
@@ -64,7 +61,6 @@ ceiling, or different keywords — instead of guessing.
      The empty case isn't optional either — it's the thing your loop branches
      on, and if you don't decide it here you'll discover it as a crash in
      Milestone 5. -->
-
 
 ### `search_listings`
 
@@ -86,27 +82,6 @@ ceiling, or different keywords — instead of guessing.
 - **Inputs:** `outfit` (str), `new_item` (dict, a listing)
 - **Returns:** A short caption string mentioning the item, price, and platform once each.
 - **When it has nothing:** If `outfit` is empty/whitespace, returns a descriptive fallback message instead of raising or returning `""`.
-
-### `search_listings`
-
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
-
-### `suggest_outfit`
-
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
-
-### `create_fit_card`
-
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
 
 ---
 
@@ -130,14 +105,6 @@ ceiling, or different keywords — instead of guessing.
 **How the query is parsed:** Regex — a `$NN` or `$NN.NN` pattern for `max_price`, a `size <token>` pattern for `size`, with both substrings stripped out of the remainder to form `description`.
 
 **What moves through the session:** `parsed` → `search_results` → `selected_item` → `outfit_suggestion` → `fit_card`, each read back out of `session` before being passed to the next tool.
-
-**Branch rule:**
-
-**Where it lives:** `agent.py::run_agent`
-
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
-
-**What moves through the session:** <!-- which fields, in what order -->
 
 ---
 
@@ -239,27 +206,83 @@ them with my favorite white sneakers for the ultimate effortless weekend fit.
 
 **Moment 1**
 
-- *What I asked for:*
-Help implementing search_listings' size filter.
-
-- *What came back:*
-A warning that a plain substring check would cause false matches — e.g. "s" in "us 9" is True, so searching for size S could wrongly return a shoe listed as "US 9." The fix was a token-based comparison (_size_matches), splitting both strings into whole words and checking for overlap instead of substring containment.
-
-- *What I changed:*
-Used _tokenize() + set intersection for size matching instead of a in substring check, so "M" matches "S/M" but doesn't falsely match inside "US 9" or "XL."
-
+- *What I asked for:* Help implementing `search_listings`' size filter.
+- *What came back:* A warning that a plain substring check would cause false matches — e.g. `"s" in "us 9"` is `True`, so searching for size S could wrongly return a shoe listed as "US 9." The fix was a token-based comparison (`_size_matches`), splitting both strings into whole words and checking for overlap instead of substring containment.
+- *What I changed:* Used `_tokenize()` + set intersection for size matching instead of an `in` substring check, so "M" matches "S/M" but doesn't falsely match inside "US 9" or "XL."
 
 **Moment 2**
 
-- *What I asked for:*
-Help wiring run_agent()'s branch so an empty search stops before calling suggest_outfit.
+- *What I asked for:* Help wiring `run_agent()`'s branch so an empty search stops before calling `suggest_outfit`.
+- *What came back:* Code that checks `if not results:` right after `search_listings`, sets `session["error"]`, and returns early — with `trace.step()` calls added so I could watch each stage fire.
+- *What I changed:* Ran `python agent.py` and confirmed from the trace output that the impossible query ("designer ballgown size XXS under $5") stopped after step 2 with `fit_card` still `None`, while the matching query ran all 4 steps — which is how I verified the branch was really doing something rather than just looking right in the code.
 
-- *What came back:*
-Code that checks if not results: right after search_listings, sets session["error"], and returns early — with trace.step() calls added so I could watch each stage fire.
+---
 
-- *What I changed:*
-Ran python agent.py and confirmed from the trace output that the impossible query ("designer ballgown size XXS under $5") stopped after step 2 with fit_card still None, while the matching query ran all 4 steps — which is how I verified the branch was really doing something rather than just looking right in the code.
+## Stretch Features
 
+### A fourth tool — `compare_price`
+
+`compare_price(item, listings)` compares a selected item's price against the
+average price of other listings in the same category within the current
+search results, and returns a one-sentence verdict (e.g. "a great deal,"
+"fairly priced"). It's called from `run_agent` right after `selected_item`
+is chosen, whenever there are 3 or more search results to compare against.
+
+**Run where it fired:**
+
+```
+$ python app.py ask 'vintage graphic tee under $30'
+[3] compare_price
+      in:  dict with keys: result_count
+      out: $18.00 vs. category average $21.00 — fairly priced.
+```
+
+### A second branch — skipping price comparison on thin results
+
+The loop branches a second time after selecting an item: if 3 or more
+results came back from `search_listings`, it calls `compare_price`;
+otherwise it skips the comparison as statistically meaningless with too
+few data points.
+
+**Both paths, shown side by side:**
+
+```
+$ python app.py ask 'leather belt'            (4 results)
+[3] compare_price
+      out: $12.00 vs. category average $38.00 — a great deal.
+
+$ python app.py ask 'velvet blazer emerald'   (2 results)
+[3] branch
+      →    only 2 result(s) — skipping compare_price
+```
+
+### Style memory — the agent remembers a wardrobe between runs
+
+A new CLI flag, `--add-item "name|category|colors|style_tags"`, appends an
+item to a persisted wardrobe file (`data/saved_wardrobe.json`) and saves it
+to disk. Future `ask` calls (without `--empty-wardrobe`) load this saved
+wardrobe instead of the default example wardrobe, so items added in one
+run are available in later runs.
+
+**Run 1 — adding an item:**
+```
+$ python app.py ask 'vintage graphic tee under $30' --add-item "Red beanie|accessories|red|cozy,winter"
+(added 'Red beanie' to your saved wardrobe — it will persist in future runs)
+```
+
+**Run 2 — a later, separate run, shaped by what Run 1 stored:**
+```
+$ python app.py ask 'leather belt'
+(loaded your saved wardrobe from a previous run)
+...
+
+Outfit 2: Earth-Tone Minimalist
+Accessories: Red beanie (for a pop of color)
+```
+The beanie added in Run 1 was not only stored (confirmed in
+`data/saved_wardrobe.json`, which shows `w_custom_11 — Red beanie` appended
+after the original 10 items) but was also picked up and used by the model
+as a styling option in a completely separate later run.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
