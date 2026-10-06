@@ -151,18 +151,41 @@ $ python app.py ask '...'
 **The three tools, tested one at a time**
 
 ```
-$ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
+$ python -c "from tools import search_listings; print(search_listings('vintage graphic tee', max_price=30))"
 
+Returned 10 results, best matches first — e.g. lst_002 "Y2K Baby Tee —
+Butterfly Print" ($18.00), lst_006 "Graphic Tee — 2003 Tour Bootleg Style"
+($24.00), lst_033 "Vintage Band Tee — Faded Grey" ($19.00). All results
+are $30 or under, matching the price ceiling.
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
 
+Here are two specific outfit ideas using the vintage Levi's 501 jeans and pieces from your existing wardrobe:
+
+Outfit 1: Effortless Minimal Streetwear
+- Vintage Levi's 501 Jeans (Medium Wash)
+- White ribbed tank top
+- Brown leather belt
+- Chunky white sneakers
+- Black crossbody bag
+- Optional layering: Oversized grey crewneck sweatshirt
+
+Outfit 2: Grunge-Infused Denim on Denim
+- Vintage Levi's 501 Jeans (Medium Wash)
+- Black cropped zip hoodie
+- Vintage black denim jacket (layered over the hoodie)
+- Black combat boots
+- Black crossbody bag
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
 
+Nothing beats the fit of broken-in denim. Snagged these vintage Levi's 501s
+on Depop for just $38, and I'm officially obsessed. Can't wait to style
+them with my favorite white sneakers for the ultimate effortless weekend fit.
 ```
 
 ---
