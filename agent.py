@@ -19,6 +19,7 @@ import config
 import trace
 from tools import suggest_outfit, create_fit_card, compare_price
 from mcp_client import call_tool
+from generate import ModelUnavailable
 
 
 # ── session state ─────────────────────────────────────────────────────────────
