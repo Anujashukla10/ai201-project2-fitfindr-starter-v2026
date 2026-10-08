@@ -302,19 +302,38 @@ as a styling option in a completely separate later run.
      `python run_eval.py --label before` runs everything and writes the table
      into results/. Paste it here and fill in the verdicts. -->
 
+
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes all three tools and returns a fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops before `suggest_outfit` | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. `session["selected_item"]["id"]` matches the id passed to `suggest_outfit` | 5 of 5 | ? | ? | ? | ? | ? | **Unverifiable** — trace only showed key names, not values |
+| 4. Fit card mentions price + platform, 2–4 sentences | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Empty wardrobe still gives a non-empty outfit suggestion | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Real output from one try**, pasted as text, naming the file and function
-that produced it:
+**Real output from one try**, produced by `run_eval.py::main` calling `agent.py::run_agent`:
 
 ```
+$ python run_eval.py --label before
 
+matching query completes  (example wardrobe)
+  query: vintage graphic tee under $30
+[1] parse_query
+      in:  dict with keys: query
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+[3] compare_price
+      in:  dict with keys: result_count
+      out: $18.00 vs. category average $21.00 — fairly priced.
+[4] suggest_outfit
+      in:  dict with keys: item_id, item_title
+      out: Here are 2 outfit combinations using the Y2K butterfly baby tee and pieces from your existing wardrobe…
+[5] create_fit_card
+      in:  dict with keys: outfit
+      out: Scored this butterfly baby tee on Depop for just $18 and I'm literally never taking it off. 🦋✨ Obsessed with s…
+  try 1: completed — fit card 251 chars
 ```
 
 ---
@@ -339,15 +358,17 @@ that produced it:
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | Matching query completes all three tools, returns a fit card | 4/5 | MET (5/5) | All 5 tries show `stopped early: no` with a non-empty fit card produced |
+| 2 | Impossible query stops before `suggest_outfit` | 5/5 | MET (5/5) | All 5 tries show the branch firing, trace stops after step 3, `fit_card` never set |
+| 3 | `session["selected_item"]["id"]` matches the id passed to `suggest_outfit` | 5/5 | MET (5/5) | Initially unverifiable — the trace only printed dict key names, not values, so I couldn't confirm the ids actually matched from output alone. Fixed the `suggest_outfit` trace call in `agent.py` to print `item_id=` and `item_title=` directly. Re-ran the full test; all 5 tries across all 3 relevant scenarios show the `item_id` matching the `selected_item`'s id shown earlier in the same run |
+| 4 | Fit card mentions price + platform, 2–4 sentences | 5/5 | MET (5/5) | Checked all 5 fit cards from the denim jacket scenario by hand — each names the platform (Poshmark) and a `$NN` price, 3–4 sentences long |
+| 5 | Empty wardrobe still gives non-empty outfit advice | 5/5 | MET (5/5) | All 5 tries produced real, non-empty general advice, visibly different in content from the wardrobe-specific suggestions in other scenarios |
 
 **Diagnoses**
 
+No criterion was missed across either run. The one real issue found wasn't a *miss* against a target — it was that criterion 3 was **unverifiable** from the original trace output, since `trace._short()` only prints key names for a dict argument rather than its values. The code itself (`session["selected_item"]` passed directly into `suggest_outfit` with no intermediate reassignment) was almost certainly correct by inspection, but "correct by reading the code" isn't the same as "confirmed by output," and the criterion specifically asked for something a reader could check from the run alone. I fixed this by changing the trace call's `inputs` argument from a dict to a formatted string (`f"item_id={...}, item_title={...}"`), which made the actual id visible in every subsequent run.
 
+Looking at the two run logs side by side, my criterion 1 target (4/5) was set lower than it needed to be — both the before and after runs hit 5/5. In hindsight, the risk I was accounting for (my search being a plain keyword match that might miss on some phrasings) didn't materialize for the specific queries I tested, because the scenario I chose ("vintage graphic tee under $30") has strong keyword overlap with several listings. A tighter, more honest target would be 5/5, tested against a query with weaker keyword overlap to actually probe that risk — e.g. a vaguer phrasing like "something cute and cheap."
 
 ---
 
@@ -425,34 +446,29 @@ now behave correctly.
 
      `python run_eval.py --label after` -->
 
-**What I changed:**
+**What I changed:** Changed the `suggest_outfit` trace call in `agent.py` from passing a dict (`{"item": ...}`) to a formatted string (`f"item_id={...}, item_title={...}"`), so the actual id value prints in the trace instead of just the dict's key names.
 
-**Which failure it was meant to fix:**
+**Which failure it was meant to fix:** Criterion 3 (state) couldn't be verified from the Before run — the trace showed `dict with keys: item_id, item_title` instead of the actual values, so there was no way to confirm from output alone that the id passed to `suggest_outfit` matched `session["selected_item"]["id"]`.
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes all three tools and returns a fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops before `suggest_outfit` | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. `session["selected_item"]["id"]` matches the id passed to `suggest_outfit` | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card mentions price + platform, 2–4 sentences | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Empty wardrobe still gives a non-empty outfit suggestion | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Did it help, and how do I know:**
-
-<!-- If it made things worse, say that. Honestly reported, that earns full
-     credit and is more interesting than one that worked. -->
-
-
+**Did it help, and how do I know:** Yes. Before the fix, every trace line for `suggest_outfit` read `in: dict with keys: item_id, item_title` — informative about structure but not about content, so criterion 3 had no real evidence behind it despite the code almost certainly being correct. After the fix, every trace line across all 3 relevant scenarios (15 tries total) reads `item_id=lst_XXX`, and in every case that id matches the `selected_item` id shown earlier in the same run (e.g. `lst_002` for the Y2K tee across all 5 tries, `lst_004` for the track jacket, `lst_007` for the denim jacket). The change didn't alter the agent's behavior at all — it only made existing, correct behavior observable, which is exactly what the criterion needed.
 
 ---
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
+Nothing was missed in this run. The one real finding — criterion 3 being unverifiable from the original trace — was diagnosed and fixed within this unit, and the fix is confirmed above.
+
+If I were to keep testing, the next thing I'd tighten is criterion 1's target: both runs hit 5/5 against a 4/5 target, so the target was set a bit low. I'd lower the risk-padding and instead test it against a deliberately vague query (e.g. "something cute and cheap") to actually probe the keyword-matching weakness I was originally worried about, rather than a query with strong, obvious keyword overlap.
 
 
 
