@@ -166,14 +166,33 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         #        change — "No results" is not that message
         #      - return the session
         #      - do NOT call suggest_outfit with nothing
+        if not results and parsed.get("size"):
+            # STRETCH — retry once without the size filter before giving up.
+            retry_parsed = {**parsed, "size": None}
+            trace.step(
+                "branch",
+                note=f"empty with size={parsed['size']!r} — retrying without size filter",
+            )
+            results = call_tool("search_listings", retry_parsed)
+            session["search_results"] = results
+            trace.step(
+                "search_listings (via MCP, retry)",
+                inputs=retry_parsed,
+                returned=results,
+            )
+            if results:
+                session["dropped_constraint"] = (
+                    f"size '{parsed['size']}' (no exact match — showing all sizes)"
+                )
+
         if not results:
             session["error"] = (
-                "No listings matched. Try raising the price ceiling, "
-                "loosening the size, or using different keywords."
+                "No listings matched, even after loosening the size filter. "
+                "Try raising the price ceiling or using different keywords."
             )
             trace.step(
                 "branch",
-                note="search_results empty — stopping before suggest_outfit",
+                note="still empty after retry — stopping before suggest_outfit",
             )
             return session
 
