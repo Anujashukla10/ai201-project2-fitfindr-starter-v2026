@@ -366,20 +366,54 @@ that produced it:
 **Happy path**
 
 ```
+$ python app.py ask 'vintage graphic tee under $30' --trace
 
+[1] parse_query
+      in:  dict with keys: query
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+[3] compare_price
+      in:  dict with keys: result_count
+      out: $18.00 vs. category average $21.00 — fairly priced.
+[4] suggest_outfit
+      in:  dict with keys: item
+      out: Here are two specific outfit combinations using the Y2K Butterfly Baby Tee and pieces from your existing wardr…
+[5] create_fit_card
+      in:  dict with keys: outfit
+      out: Scored this butterfly baby tee on Depop for just $18 and I'm already obsessed! Can't decide if I want to lean …
 ```
 
 **Empty search**
 
 ```
+$ python app.py ask 'designer ballgown size XXS under $5' --trace
 
+[1] parse_query
+      in:  dict with keys: query
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: [] (empty)
+[3] branch
+      →    search_results empty — stopping before suggest_outfit
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
-behaved differently afterwards. If the rewire didn't work, say exactly where it
-broke — the error text and the last thing that worked. That earns the point in
-full. -->
+**On the MCP move:** Moved `search_listings` behind an MCP server
+(`mcp_server.py`) and swapped the direct call in `run_agent` for
+`mcp_client.call_tool`. The trace confirms the call: step [2] in both
+traces above reads "search_listings (via MCP)". Results were identical in
+shape and content to the direct-call version from Unit 3 — same 10 matches
+for the graphic tee query, same empty result for the impossible query —
+confirming the call changed shape but not what it returned.
 
+Also found and fixed a real bug during this milestone: `agent.py` was
+missing `from generate import ModelUnavailable`, so any exception inside
+`run_agent`'s try block — not just a real model failure — crashed with an
+unrelated `NameError` instead of being handled. Fixed by restoring the
+import; re-ran the empty-wardrobe and bad-key triggers afterward and both
+now behave correctly.
 
 
 ---
