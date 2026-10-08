@@ -17,8 +17,8 @@ import re
 
 import config
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card, compare_price
-from generate import ModelUnavailable
+from tools import suggest_outfit, create_fit_card, compare_price
+from mcp_client import call_tool
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -156,9 +156,9 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     try:
         iterations += 1
         trace.check_iterations(iterations)
-        results = search_listings(**parsed)
+        results = call_tool("search_listings", parsed)
         session["search_results"] = results
-        trace.step("search_listings", inputs=parsed, returned=results)
+        trace.step("search_listings (via MCP)", inputs=parsed, returned=results)
 
         # ⚠️ THIS IS THE BRANCH. If nothing came back:
         #      - put a message in session["error"] saying what the user could
