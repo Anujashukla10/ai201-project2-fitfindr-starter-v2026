@@ -216,6 +216,13 @@ them with my favorite white sneakers for the ultimate effortless weekend fit.
 - *What came back:* Code that checks `if not results:` right after `search_listings`, sets `session["error"]`, and returns early — with `trace.step()` calls added so I could watch each stage fire.
 - *What I changed:* Ran `python agent.py` and confirmed from the trace output that the impossible query ("designer ballgown size XXS under $5") stopped after step 2 with `fit_card` still `None`, while the matching query ran all 4 steps — which is how I verified the branch was really doing something rather than just looking right in the code.
 
+
+**Moment 3**
+
+- *What I asked for:* Help triggering the "model unavailable" failure mode by changing one character of my API key.
+- *What came back:* A `NameError: name 'ModelUnavailable' is not defined` instead of the expected handled error message — which turned out to be a real bug: `agent.py` was missing `from generate import ModelUnavailable`, so the `except ModelUnavailable` clause couldn't even be evaluated, and *any* exception in that code path crashed with this unrelated error.
+- *What I changed:* Restored the missing import, then re-ran all three failure triggers (empty search, empty wardrobe, bad key) to confirm each one now produces a readable message instead of crashing.
+
 ---
 
 ## Stretch Features
