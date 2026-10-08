@@ -59,7 +59,10 @@ works with a direct call, and **a documented failure earns the point in full.**
 
 from mcp.server.fastmcp import FastMCP
 
-from tools import search_listings as _search_listings_impl  # noqa: F401 — you'll use this below
+from tools import (
+    search_listings as _search_listings_impl,
+    compare_price as _compare_price_impl,
+)  # noqa: F401 — you'll use these below
 
 # log_level="WARNING" keeps the server from printing an INFO line for every
 # request. Without it your terminal fills with "Processing request of type
@@ -86,6 +89,23 @@ def search_listings(
     Returns an empty list — never null, never an error — when nothing matches.
     """
     return _search_listings_impl(description, size, max_price)
+
+@mcp.tool()
+def compare_price(item_id: str, listing_ids: list[str]) -> str:
+    """
+    Compare one listing's price against the average price of other listings
+    in the same category. Takes the target listing's id and the ids of a set
+    of listings to compare it against (usually a recent search's results).
+
+    Returns a one-sentence verdict, e.g. "$18.00 vs. category average
+    $21.00 — fairly priced." Returns a message saying there's nothing
+    comparable if no other same-category listings are found in the given set.
+    """
+    from utils.data_loader import load_listings
+    all_listings = {l["id"]: l for l in load_listings()}
+    item = all_listings[item_id]
+    listings = [all_listings[lid] for lid in listing_ids if lid in all_listings]
+    return _compare_price_impl(item, listings)
 # ──────────────────────────────────────────────────────────────────────────────
 #
 # Two notes on the block above.

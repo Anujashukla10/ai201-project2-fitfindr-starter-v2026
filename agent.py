@@ -17,7 +17,7 @@ import re
 
 import config
 import trace
-from tools import suggest_outfit, create_fit_card, compare_price
+from tools import suggest_outfit, create_fit_card
 from mcp_client import call_tool
 from generate import ModelUnavailable
 
@@ -186,10 +186,13 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         iterations += 1
         trace.check_iterations(iterations)
         if len(results) >= 3:
-            comparison = compare_price(session["selected_item"], results)
+            comparison = call_tool("compare_price", {
+                "item_id": session["selected_item"]["id"],
+                "listing_ids": [r["id"] for r in results],
+            })
             session["price_comparison"] = comparison
             trace.step(
-                "compare_price",
+                "compare_price (via MCP)",
                 inputs={"result_count": len(results)},
                 returned=comparison,
             )
