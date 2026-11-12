@@ -605,4 +605,36 @@ double-prefix note under "What's Still Broken" above.)
 
 ---
 
+
+
+## Capstone
+
+**What This Extends**
+
+This extends FitFindr, the agent built in Units 3–4, which takes a plain-language
+query, searches secondhand listings, compares the price, suggests an outfit, and
+writes a caption. The new capability: when a query gives the agent nothing to
+search on — no size, no price ceiling, and no specific enough description — the
+agent asks one clarifying question instead of guessing and returning a weak or
+empty result.
+
+**The Shape**
+
+Shape C — extending one capability. The new behavior is a vagueness check that
+runs immediately after `parse_query` and before `search_listings`: if the parsed
+query has no `max_price`, no `size`, and a `description` under some minimum
+length/specificity, the agent stops and returns a clarifying question asking
+which of those is missing, rather than running a search that's likely to return
+noise or nothing.
+
+Out of scope for this unit:
+- Not adding real multi-turn conversation — the agent asks one question and
+  stops; it doesn't loop waiting for the answer and re-run automatically.
+- Not touching `suggest_outfit`, `create_fit_card`, or the MCP tools — they're
+  unchanged.
+- Not rebuilding the CLI into an interactive back-and-forth; `--trace` output
+  and the existing `ask` command stay as they are.
+
+
+  
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
