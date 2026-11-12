@@ -1,23 +1,20 @@
 """
-The FitFindr planning loop.
+The FitFindr planning loop — now with a Capstone extension.
 
-This is the file that makes FitFindr an agent rather than a script. It decides
-which tool to run next based on what the last one returned.
-
-If your loop calls all three tools no matter what comes back, you have a list
-of function calls. A loop looks at the last result before it picks the next
-step. **That branch is the graded part of this unit.**
-
-Build and test your three tools in `tools.py` first. Then come here.
-
-    python agent.py          runs both example paths below
+Capstone extension: if a query gives the agent nothing to search on (no
+size, no price ceiling, and barely any descriptive keywords), the agent
+asks a clarifying question instead of running a search likely to return
+noise or nothing.
 """
 
 import re
+import time
 
 import config
 import trace
-from tools import suggest_outfit, create_fit_card
+import generate
+import capstone_log
+from tools import suggest_outfit, create_fit_card, _tokenize
 from mcp_client import call_tool
 from generate import ModelUnavailable
 
@@ -25,41 +22,23 @@ from generate import ModelUnavailable
 # ── session state ─────────────────────────────────────────────────────────────
 
 def new_session(query: str, wardrobe: dict) -> dict:
-    """
-    A fresh session for one user interaction.
-
-    The session is the single source of truth for a run. Every tool result goes
-    in here, and the next tool reads it back out.
-
-    You could pass values straight from one call to the next. It would work,
-    and you would not be able to test it — you can't print a variable you have
-    already overwritten. Going through the session is what makes the state
-    visible, and unit 4 has you write a criterion about exactly that.
-
-    Add fields if you need them.
-    """
     return {
-        "query": query,              # what the user typed
-        "parsed": {},                # description / size / max_price you pulled out of it
-        "search_results": [],        # everything search_listings returned
-        "selected_item": None,       # the one you chose — goes into suggest_outfit
-        "wardrobe": wardrobe,        # the user's wardrobe
-        "price_comparison": None,    # STRETCH — what compare_price returned, if it ran
-        "outfit_suggestion": None,   # what suggest_outfit returned
-        "fit_card": None,            # what create_fit_card returned
-        "error": None,               # set when the run ended early
+        "query": query,
+        "parsed": {},
+        "search_results": [],
+        "selected_item": None,
+        "wardrobe": wardrobe,
+        "price_comparison": None,
+        "dropped_constraint": None,
+        "needs_clarification": False,
+        "clarifying_question": None,
+        "outfit_suggestion": None,
+        "fit_card": None,
+        "error": None,
     }
 
 
-# ── query parsing ──────────────────────────────────────────────────────────────
-
 def _parse_query(query: str) -> dict:
-    """
-    Pull a description, a size, and a max_price out of a plain-language query.
-
-    Regex-based: a $NN or $NN.NN pattern for max_price, a "size X" pattern for
-    size, with both stripped out of what's left to form the description.
-    """
     max_price = None
     price_match = re.search(r"\$(\d+(?:\.\d{1,2})?)", query)
     if price_match:
@@ -77,97 +56,77 @@ def _parse_query(query: str) -> dict:
     return {"description": description, "size": size, "max_price": max_price}
 
 
+def _is_too_vague(parsed: dict) -> bool:
+    """
+    CAPSTONE EXTENSION.
+
+    A query is too vague to search meaningfully if it gives no price
+    ceiling, no size, and a description with at most one meaningful
+    keyword token (stopwords excluded). "something cute and cheap" has
+    zero usable tokens after stripping stopwords; "denim jacket" has two
+    and is fine even with nothing else specified.
+    """
+    if parsed.get("max_price") is not None:
+        return False
+    if parsed.get("size"):
+        return False
+    tokens = _tokenize(parsed.get("description", ""))
+    return len(tokens) <= 1
+
+
 # ── planning loop ─────────────────────────────────────────────────────────────
 
 def run_agent(query: str, wardrobe: dict) -> dict:
-    """
-    Run the loop once and return the finished session.
-
-    Args:
-        query:    what the user asked for, in plain language
-                  (e.g. "vintage graphic tee under $30, size M").
-        wardrobe: a wardrobe dict — get_example_wardrobe() or
-                  get_empty_wardrobe() from utils/data_loader.py.
-
-    Returns:
-        The session dict. **Check session["error"] first** — if it isn't None,
-        the run ended early and the later fields will still be None.
-
-    ─────────────────────────────────────────────────────────────────────────
-    TODO — build this, following the branch rule you wrote in Milestone 2.
-
-      1. Start a session with new_session().
-
-      2. Count the times round the loop, and call trace.check_iterations(count)
-         on each one before you go again. It raises when the count passes
-         MAX_ITERATIONS in config.py — see trace.py.
-
-      3. Parse the query into a description, a size, and a max_price. Regex,
-         string splitting, or asking the model are all fine — say which you
-         chose in your README. Put the result in session["parsed"].
-
-      4. Call search_listings() with what you parsed.
-         Put the results in session["search_results"].
-
-         ⚠️ THIS IS THE BRANCH. If nothing came back:
-              - put a message in session["error"] saying what the user could
-                change — "No results" is not that message
-              - return the session
-              - do NOT call suggest_outfit with nothing
-
-      5. Choose an item — the first result is fine. Put it in
-         session["selected_item"].
-
-      6. Call suggest_outfit() with the selected item and the wardrobe.
-         Put the result in session["outfit_suggestion"].
-
-      7. Call create_fit_card() with the outfit and the item.
-         Put the result in session["fit_card"].
-
-      8. Return the session.
-
-    ─────────────────────────────────────────────────────────────────────────
-    IN UNIT 4 you come back and add two things:
-
-      • Trace calls. One per step. `trace.step("search_listings", inputs=...,
-        returned=...)` — see trace.py. Your README needs the output.
-
-      • A handler for ModelUnavailable, so a bad key produces a message rather
-        than a stack trace. The import is already at the top of this file.
-
-    ─────────────────────────────────────────────────────────────────────────
-    STRETCH — second branch (this unit, optional, for extra credit):
-
-      After selecting an item, if three or more results came back, call the
-      new compare_price() tool and store its verdict in
-      session["price_comparison"]. With fewer than three results there isn't
-      enough in the category to compare against, so the loop skips that call
-      entirely rather than running it on nothing — same shape as the
-      empty-search branch, just a different condition.
-    """
     session = new_session(query, wardrobe)
     iterations = 0
-
-    iterations += 1
-    trace.check_iterations(iterations)
-    parsed = _parse_query(query)
-    session["parsed"] = parsed
-    trace.step("parse_query", inputs={"query": query}, returned=parsed)
+    run_start = time.monotonic()
+    calls_before = generate.call_count()
+    tokens_before = generate.token_counts()
 
     try:
+        stage_start = time.monotonic()
+        iterations += 1
+        trace.check_iterations(iterations)
+        parsed = _parse_query(query)
+        session["parsed"] = parsed
+        trace.step("parse_query", inputs={"query": query}, returned=parsed)
+        capstone_log.log_event("parse_query", query, parsed, time.monotonic() - stage_start)
+
+        # ── CAPSTONE BRANCH: too vague to search ──
+        stage_start = time.monotonic()
+        if _is_too_vague(parsed):
+            question = (
+                "That's pretty open-ended — can you give me a size, a "
+                "price ceiling, or a more specific kind of item (e.g. "
+                "'denim jacket' instead of 'something cute')?"
+            )
+            session["needs_clarification"] = True
+            session["clarifying_question"] = question
+            session["error"] = question
+            trace.step(
+                "branch",
+                note="query too vague — asking a clarifying question instead of searching",
+            )
+            capstone_log.log_event(
+                "vagueness_check", parsed, question, time.monotonic() - stage_start,
+                status="needs_clarification",
+            )
+            return session
+        capstone_log.log_event(
+            "vagueness_check", parsed, "query specific enough — proceeding",
+            time.monotonic() - stage_start, status="ok",
+        )
+
+        stage_start = time.monotonic()
         iterations += 1
         trace.check_iterations(iterations)
         results = call_tool("search_listings", parsed)
         session["search_results"] = results
         trace.step("search_listings (via MCP)", inputs=parsed, returned=results)
+        capstone_log.log_event("search_listings", parsed, {"count": len(results)}, time.monotonic() - stage_start)
 
-        # ⚠️ THIS IS THE BRANCH. If nothing came back:
-        #      - put a message in session["error"] saying what the user could
-        #        change — "No results" is not that message
-        #      - return the session
-        #      - do NOT call suggest_outfit with nothing
         if not results and parsed.get("size"):
-            # STRETCH — retry once without the size filter before giving up.
+            stage_start = time.monotonic()
             retry_parsed = {**parsed, "size": None}
             trace.step(
                 "branch",
@@ -179,6 +138,10 @@ def run_agent(query: str, wardrobe: dict) -> dict:
                 "search_listings (via MCP, retry)",
                 inputs=retry_parsed,
                 returned=results,
+            )
+            capstone_log.log_event(
+                "search_listings_retry", retry_parsed, {"count": len(results)},
+                time.monotonic() - stage_start,
             )
             if results:
                 session["dropped_constraint"] = (
@@ -198,10 +161,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
         session["selected_item"] = results[0]
 
-        # STRETCH — second branch: only compare prices when there's enough in
-        # the category to compare against. Fewer than three results means
-        # compare_price would have nothing meaningful to average, so the loop
-        # takes the other path instead of calling it on an empty comparison set.
+        stage_start = time.monotonic()
         iterations += 1
         trace.check_iterations(iterations)
         if len(results) >= 3:
@@ -215,12 +175,17 @@ def run_agent(query: str, wardrobe: dict) -> dict:
                 inputs={"result_count": len(results)},
                 returned=comparison,
             )
+            capstone_log.log_event(
+                "compare_price", {"result_count": len(results)}, comparison,
+                time.monotonic() - stage_start,
+            )
         else:
             trace.step(
                 "branch",
                 note=f"only {len(results)} result(s) — skipping compare_price",
             )
 
+        stage_start = time.monotonic()
         iterations += 1
         trace.check_iterations(iterations)
         outfit = suggest_outfit(session["selected_item"], wardrobe)
@@ -230,18 +195,87 @@ def run_agent(query: str, wardrobe: dict) -> dict:
             inputs=f"item_id={session['selected_item']['id']}, item_title={session['selected_item']['title']}",
             returned=outfit,
         )
+        capstone_log.log_event(
+            "suggest_outfit", {"item_id": session["selected_item"]["id"]},
+            outfit[:200], time.monotonic() - stage_start,
+        )
 
+        stage_start = time.monotonic()
         iterations += 1
         trace.check_iterations(iterations)
         fit_card = create_fit_card(outfit, session["selected_item"])
         session["fit_card"] = fit_card
         trace.step("create_fit_card", inputs={"outfit": outfit}, returned=fit_card)
+        capstone_log.log_event("create_fit_card", {"outfit_len": len(outfit)}, fit_card, time.monotonic() - stage_start)
 
     except ModelUnavailable as exc:
         session["error"] = f"Couldn't reach the model: {exc}"
         trace.step("error", note=str(exc))
 
+    finally:
+        total_duration = time.monotonic() - run_start
+        calls_after = generate.call_count()
+        tokens_after = generate.token_counts()
+        status = (
+            "needs_clarification" if session.get("needs_clarification")
+            else "error" if session.get("error")
+            else "completed"
+        )
+        capstone_log.log_event(
+            "run",
+            {"query": query},
+            {
+                "status": status,
+                "selected_item": (session.get("selected_item") or {}).get("title"),
+                "error": session.get("error"),
+            },
+            total_duration,
+            model_calls=calls_after - calls_before,
+            prompt_tokens=tokens_after["prompt"] - tokens_before["prompt"],
+            output_tokens=tokens_after["output"] - tokens_before["output"],
+        )
+
     return session
 
 
-# ── running it directly ────────────────────────────────────────────
+# ── running it directly ───────────────────────────────────────────────────────
+
+def _show(session: dict) -> None:
+    if session.get("needs_clarification"):
+        print(f"  clarifying question: {session['clarifying_question']}")
+        return
+    if session["error"]:
+        print(f"  stopped: {session['error']}")
+        print(f"  fit_card is {session['fit_card']!r} — it should still be None here")
+        return
+
+    item = session["selected_item"] or {}
+    print(f"  found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
+    if session.get("dropped_constraint"):
+        print(f"  note:     dropped {session['dropped_constraint']}")
+    if session.get("price_comparison"):
+        print(f"  price:    {session['price_comparison']}")
+    print(f"  outfit:   {session['outfit_suggestion']}")
+    print(f"  fit card: {session['fit_card']}")
+
+
+if __name__ == "__main__":
+    from utils.data_loader import get_example_wardrobe
+
+    print("=== A query the data can match ===")
+    _show(run_agent(
+        query="looking for a vintage graphic tee under $30",
+        wardrobe=get_example_wardrobe(),
+    ))
+
+    print("\n=== A query it can't ===")
+    _show(run_agent(
+        query="designer ballgown size XXS under $5",
+        wardrobe=get_example_wardrobe(),
+    ))
+
+    print("\n=== A query that's too vague ===")
+    _show(run_agent(
+        query="something cute and cheap",
+        wardrobe=get_example_wardrobe(),
+    ))

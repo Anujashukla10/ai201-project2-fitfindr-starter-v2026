@@ -246,3 +246,24 @@ history is what shows your criteria existed before your results did.
 units.
 
 `results/` is deliberately **not** in `.gitignore`.
+
+
+## Capstone run path (Path B — local with logs)
+
+**Start command** (from a clean checkout):
+```bash
+python -m venv .venv
+.venv\Scripts\Activate.ps1          # Windows PowerShell
+pip install -r requirements.txt
+copy .env.example .env              # paste your GEMINI_API_KEY in
+python app.py ask 'vintage graphic tee under $30'
+```
+
+**Environment needed:**
+- Python 3.13 (pinned; 3.14 is not supported — see `requirements.txt`)
+- Dependencies: `python-dotenv`, `google-genai`, `mcp`, `flask`, `gunicorn` (see `requirements.txt` for exact pins)
+- No local model files — this system calls the Gemini API (`gemini-3.5-flash-lite`) over the network; nothing to download.
+- `logs/capstone.jsonl` is created automatically on first run and holds the structured instrumentation log.
+
+**To see the cost/latency report:** `python capstone_report.py`
+**To see a load observation:** `python load_test.py`
