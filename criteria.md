@@ -135,3 +135,58 @@ The empty wardrobe case is handled by suggest_outfit with a prompt asking for ge
      A number you missed stays where it is, gets diagnosed, and gets a fix
      attempted. That's where the points are.
      ───────────────────────────────────────────────────────────────────────── -->
+
+---
+
+## Capstone — Extension Criteria
+
+Five criteria for this unit's extension: a clarifying-question branch that
+fires when a query gives the agent no size, no price, and no description
+tokens that match anything in the real listings vocabulary. Written before
+any results exist for this unit.
+
+### 1. Vague query triggers a clarifying question, no search
+
+When a query is too vague, the agent returns a clarifying question and
+does NOT call `search_listings` — 3 of 3 trials.
+
+**Why this target:** The vague-query path should stop before
+`search_listings` so the agent does not retrieve listings without enough
+information to match the user's request.
+
+### 2. Specific query proceeds normally, no clarification
+
+When a query has a size, a price, or keyword tokens that match the real
+listings vocabulary, the agent does NOT ask a clarifying question and
+proceeds normally — 3 of 3 trials.
+
+**Why this target:** The query-handling logic already has concrete
+information to determine whether a search can proceed without
+clarification.
+
+### 3. The clarifying question names something the user could supply
+
+The clarifying question actually names something actionable — a size, a
+price, or a request for more specificity — 3 of 3 trials.
+
+**Why this target:** A generic clarification would not help the user fix
+the missing information that prevents the search from proceeding.
+
+### 4. Regression check — a normal query still completes end to end
+
+A normal matching query still completes all tools and returns a fit
+card — 3 of 3 trials.
+
+**Why this target:** The extension changes when search starts, so the
+existing successful listing-search and fit-card workflow must remain
+intact.
+
+### 5. Latency — a completed run finishes within a measured bound
+
+A completed run (search → outfit → fit card) finishes in under 8
+seconds — 3 of 3 trials.
+
+**Why this target:** The measured average run time is 3.3 seconds and
+the maximum observed is 7.6 seconds, so an 8-second target allows a
+small buffer above the observed maximum without accepting a noticeable
+slowdown.
