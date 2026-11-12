@@ -138,6 +138,7 @@ The empty wardrobe case is handled by suggest_outfit with a prompt asking for ge
 
 ---
 
+
 ## Capstone — Extension Criteria
 
 Five criteria for this unit's extension: a clarifying-question branch that
@@ -190,3 +191,17 @@ seconds — 3 of 3 trials.
 the maximum observed is 7.6 seconds, so an 8-second target allows a
 small buffer above the observed maximum without accepting a noticeable
 slowdown.
+
+> **Revised in Capstone testing:** This criterion is measured by running
+> the 3 latency trials in their own isolated process, not back-to-back
+> with the other 12 scenarios, since the shared per-minute request quota
+> (`generate.py`'s `REQUESTS_PER_MINUTE = 15`) caused one trial to hit a
+> real pacing wait that reflected batch-testing contention, not the
+> system's actual per-request latency. Target stays at under 8 seconds,
+> 3 of 3 trials.
+>
+> **Why revised:** The original run showed a 26.95s trial caused entirely
+> by a `[rate limit] ... Waiting 22s` pause triggered by earlier scenarios
+> in the same process consuming the shared quota — not by the extension's
+> own code being slow. The number is real, but it was measuring the wrong
+> thing.
