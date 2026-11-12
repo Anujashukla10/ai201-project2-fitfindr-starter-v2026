@@ -29,8 +29,10 @@ def main():
 
     print(f"Total log records: {len(records)}\n")
     print("--- Per-stage latency (measured) ---")
-    print(f"[{event:<20}]  n={len(rows):<3}  "
-          f"avg={mean(durations):.3f}s  min={min(durations):.3f}s  max={max(durations):.3f}s")
+    for event, rows in by_event.items():
+        durations = [r["duration_s"] for r in rows]
+        print(f"[{event:<20}]  n={len(rows):<3}  "
+              f"avg={mean(durations):.3f}s  min={min(durations):.3f}s  max={max(durations):.3f}s")
 
     run_rows = by_event.get("run", [])
     if run_rows:

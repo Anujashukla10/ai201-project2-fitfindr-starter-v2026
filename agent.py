@@ -17,7 +17,24 @@ import capstone_log
 from tools import suggest_outfit, create_fit_card, _tokenize
 from mcp_client import call_tool
 from generate import ModelUnavailable
+from utils.data_loader import load_listings
 
+_VOCAB = None
+
+def _build_vocab() -> set:
+    global _VOCAB
+    if _VOCAB is not None:
+        return _VOCAB
+    vocab = set()
+    for listing in load_listings():
+        vocab |= _tokenize(listing["title"])
+        vocab |= _tokenize(listing["category"])
+        vocab |= _tokenize(" ".join(listing["style_tags"]))
+        vocab |= _tokenize(" ".join(listing["colors"]))
+        if listing["brand"]:
+            vocab |= _tokenize(listing["brand"])
+    _VOCAB = vocab
+    return _VOCAB
 
 # ── session state ─────────────────────────────────────────────────────────────
 
@@ -60,18 +77,21 @@ def _is_too_vague(parsed: dict) -> bool:
     """
     CAPSTONE EXTENSION.
 
-    A query is too vague to search meaningfully if it gives no price
-    ceiling, no size, and a description with at most one meaningful
-    keyword token (stopwords excluded). "something cute and cheap" has
-    zero usable tokens after stripping stopwords; "denim jacket" has two
-    and is fine even with nothing else specified.
+    A query is too vague if it gives no price, no size, AND none of its
+    description's keyword tokens match anything in the real listings
+    vocabulary (category names, style tags, colors, brands, title words).
+    "something cute and cheap" has three tokens but zero that mean
+    anything to the data — this is what makes it genuinely vague, not
+    just short.
     """
     if parsed.get("max_price") is not None:
         return False
     if parsed.get("size"):
         return False
     tokens = _tokenize(parsed.get("description", ""))
-    return len(tokens) <= 1
+    if not tokens:
+        return True
+    return tokens.isdisjoint(_build_vocab())
 
 
 # ── planning loop ─────────────────────────────────────────────────────────────
