@@ -605,8 +605,6 @@ double-prefix note under "What's Still Broken" above.)
 
 ---
 
-
-
 ## Capstone
 
 **What This Extends**
@@ -650,22 +648,23 @@ additionally records model-call count and token deltas for cost tracking.
 
 Ten real raw entries, pasted directly from `logs/capstone.jsonl`:
 
-{“timestamp”: 1794452488.270, “event”: “search_listings”, “input”: {“description”: “vintage graphic tee under”, “size”: null, “max_price”: 30.0}, “output”: {“count”: 10}, “duration_s”: 0.906}
-{“timestamp”: 1794452489.167, “event”: “compare_price”, “input”: {“result_count”: 10}, “output”: “$18.00 vs. category average $21.00 — fairly priced.”, “duration_s”: 0.896}
-{“timestamp”: 1794452490.829, “event”: “suggest_outfit”, “input”: {“item_id”: “lst_002”}, “output”: “Here are two specific outfit combinations using the Y2K Butterfly Baby Tee and pieces from your existing wardrobe...”, “duration_s”: 1.075}
-{“timestamp”: 1794452491.753, “event”: “create_fit_card”, “input”: {“outfit_len”: 924}, “output”: “Scored this absolute dream of a butterfly baby tee on Depop for just $18! Currently obsessed with styling it either with baggy dark denim and chunky sneakers or dressing it down with khaki trousers...”, “duration_s”: 0.925}
-{“timestamp”: 1794452491.754, “event”: “run”, “input”: {“query”: “vintage graphic tee under $30”}, “output”: {“status”: “completed”, “selected_item”: “Y2K Baby Tee — Butterfly Print”, “error”: null}, “duration_s”: 4.391, “model_calls”: 2, “prompt_tokens”: 558, “output_tokens”: 290}
-{“timestamp”: 1794452491.755, “event”: “parse_query”, “input”: “denim jacket under $50”, “output”: {“description”: “denim jacket under”, “size”: null, “max_price”: 50.0}, “duration_s”: 0.0002}
-{“timestamp”: 1794452491.755, “event”: “vagueness_check”, “input”: {“description”: “denim jacket under”, “size”: null, “max_price”: 50.0}, “output”: “query specific enough — proceeding”, “duration_s”: 0.0, “status”: “ok”}
-{“timestamp”: 1794452492.709, “event”: “search_listings”, “input”: {“description”: “denim jacket under”, “size”: null, “max_price”: 50.0}, “output”: {“count”: 7}, “duration_s”: 0.954}
-{“timestamp”: 1794452496.055, “event”: “run”, “input”: {“query”: “denim jacket under $50”}, “output”: {“status”: “completed”, “selected_item”: “Denim Jacket — Light Wash, Cropped”, “error”: null}, “duration_s”: 4.301, “model_calls”: 2, “prompt_tokens”: 653, “output_tokens”: 402}
-{“timestamp”: 1794451255.107, “event”: “run”, “input”: {“query”: “something cute and cheap”}, “output”: {“status”: “needs_clarification”, “selected_item”: null, “error”: “That’s pretty open-ended — can you give me a size, a price ceiling, or a more specific kind of item (e.g. ‘denim jacket’ instead of ‘something cute’)?”}, “duration_s”: 0.004, “model_calls”: 0, “prompt_tokens”: 0, “output_tokens”: 0}
-
+```
+{"timestamp": 1794452488.270, "event": "search_listings", "input": {"description": "vintage graphic tee under", "size": null, "max_price": 30.0}, "output": {"count": 10}, "duration_s": 0.906}
+{"timestamp": 1794452489.167, "event": "compare_price", "input": {"result_count": 10}, "output": "$18.00 vs. category average $21.00 — fairly priced.", "duration_s": 0.896}
+{"timestamp": 1794452490.829, "event": "suggest_outfit", "input": {"item_id": "lst_002"}, "output": "Here are two specific outfit combinations using the Y2K Butterfly Baby Tee and pieces from your existing wardrobe...", "duration_s": 1.075}
+{"timestamp": 1794452491.753, "event": "create_fit_card", "input": {"outfit_len": 924}, "output": "Scored this absolute dream of a butterfly baby tee on Depop for just $18! Currently obsessed with styling it either with baggy dark denim and chunky sneakers or dressing it down with khaki trousers...", "duration_s": 0.925}
+{"timestamp": 1794452491.754, "event": "run", "input": {"query": "vintage graphic tee under $30"}, "output": {"status": "completed", "selected_item": "Y2K Baby Tee — Butterfly Print", "error": null}, "duration_s": 4.391, "model_calls": 2, "prompt_tokens": 558, "output_tokens": 290}
+{"timestamp": 1794452491.755, "event": "parse_query", "input": "denim jacket under $50", "output": {"description": "denim jacket under", "size": null, "max_price": 50.0}, "duration_s": 0.0002}
+{"timestamp": 1794452491.755, "event": "vagueness_check", "input": {"description": "denim jacket under", "size": null, "max_price": 50.0}, "output": "query specific enough — proceeding", "duration_s": 0.0, "status": "ok"}
+{"timestamp": 1794452492.709, "event": "search_listings", "input": {"description": "denim jacket under", "size": null, "max_price": 50.0}, "output": {"count": 7}, "duration_s": 0.954}
+{"timestamp": 1794452496.055, "event": "run", "input": {"query": "denim jacket under $50"}, "output": {"status": "completed", "selected_item": "Denim Jacket — Light Wash, Cropped", "error": null}, "duration_s": 4.301, "model_calls": 2, "prompt_tokens": 653, "output_tokens": 402}
+{"timestamp": 1794451255.107, "event": "run", "input": {"query": "something cute and cheap"}, "output": {"status": "needs_clarification", "selected_item": null, "error": "That's pretty open-ended — can you give me a size, a price ceiling, or a more specific kind of item (e.g. 'denim jacket' instead of 'something cute')?"}, "duration_s": 0.004, "model_calls": 0, "prompt_tokens": 0, "output_tokens": 0}
+```
 
 A failed-path entry (the empty-search failure trigger, real timestamp from the log):
-
-{“timestamp”: 1794450485.002, “event”: “run”, “input”: {“query”: “designer ballgown size XXS under $5”}, “output”: {“status”: “error”, “selected_item”: null, “error”: “No listings matched, even after loosening the size filter. Try raising the price ceiling or using different keywords.”}, “duration_s”: 2.899, “model_calls”: 0, “prompt_tokens”: 0, “output_tokens”: 0}
-
+```
+{"timestamp": 1794450485.002, "event": "run", "input": {"query": "designer ballgown size XXS under $5"}, "output": {"status": "error", "selected_item": null, "error": "No listings matched, even after loosening the size filter. Try raising the price ceiling or using different keywords."}, "duration_s": 2.899, "model_calls": 0, "prompt_tokens": 0, "output_tokens": 0}
+```
 
 **What It Costs**
 
@@ -702,29 +701,70 @@ seen in testing.
 | 5. Completed run finishes under 8s (original, batched) | 3/3 | PASS (4.20s) | **FAIL (26.95s)** | PASS (4.30s) | MISSED (2/3) |
 | 5 (revised). Same, measured in isolation | 3/3 | PASS (6.86s) | PASS (4.39s) | PASS (4.30s) | MET (3/3) |
 
-Real output, produced by `capstone_eval.py::main` calling
-`agent.py::run_agent`, for criterion 1:
-
-vague query triggers clarification (criterion 1)
-query: something cute and cheap
+Real output for criterion 1, produced by `capstone_eval.py::main` calling
+`agent.py::run_agent`:
+```
+vague query triggers clarification  (criterion 1)
+  query: something cute and cheap
 [2] branch
-→ query too vague — asking a clarifying question instead of searching
-status: needs_clarification duration: 0.00s
-question: That’s pretty open-ended — can you give me a size, a price
-ceiling, or a more specific kind of item (e.g. ‘denim jacket’ instead
-of ‘something cute’)?
+      →    query too vague — asking a clarifying question instead of searching
+  status: needs_clarification  duration: 0.00s
+  question: That's pretty open-ended — can you give me a size, a price
+  ceiling, or a more specific kind of item (e.g. 'denim jacket' instead
+  of 'something cute')?
+```
 
+Real output for criterion 2, produced by the same harness:
+```
+specific query proceeds normally  (criterion 2)
+  query: vintage graphic tee under $30
+[9] compare_price (via MCP)
+      out: $18.00 vs. category average $21.00 — fairly priced.
+[10] suggest_outfit
+      in:  item_id=lst_002, item_title=Y2K Baby Tee — Butterfly Print
+[11] create_fit_card
+  status: completed  duration: 7.12s
+  fit_card: Scored this cute little butterfly baby tee for just $18 on
+  Depop and I'm officially obsessed! Can't wait to style it with baggy
+  denim and sneakers...
+```
 
-Real output for criterion 5's miss, produced by the same harness,
-showing the actual rate-limit pause:
+Real output for criterion 3, produced by the same harness:
+```
+clarifying question is actionable  (criterion 3)
+  query: something trendy
+[23] branch
+      →    query too vague — asking a clarifying question instead of searching
+  status: needs_clarification  duration: 0.00s
+  question: That's pretty open-ended — can you give me a size, a price
+  ceiling, or a more specific kind of item (e.g. 'denim jacket' instead
+  of 'something cute')?
+```
 
-latency within target v2 (criterion 5)
-query: vintage graphic tee under $30
+Real output for criterion 4, produced by the same harness:
+```
+regression: matching query completes  (criterion 4)
+  query: denim jacket under $50
+[29] search_listings (via MCP)
+      out: 7 items: Denim Jacket — Light Wash, Cropped, Vintage Levi's
+      501 Jeans — Medium Wash, 90s Track Jacket — Navy/White Stripe … +4 more
+[32] create_fit_card
+  status: completed  duration: 4.24s
+  fit_card: Scored this cropped light wash denim jacket on Poshmark for
+  just $42 and I'm already obsessed! Can't wait to style it with my dark
+  wash baggy jeans...
+```
+
+Real output for criterion 5's miss, produced by the same harness, showing
+the actual rate-limit pause:
+```
+latency within target v2  (criterion 5)
+  query: vintage graphic tee under $30
 [51] suggest_outfit ...
-[rate limit] 15 requests used this minute. Waiting 22s. This is normal.
+  [rate limit] 15 requests used this minute. Waiting 22s. This is normal.
 [52] create_fit_card ...
-status: completed duration: 26.95s
-
+  status: completed  duration: 26.95s
+```
 
 **The Improvement**
 
@@ -740,20 +780,35 @@ scenarios in the same batch had already consumed most of the per-minute
 quota by the time the latency group ran. The code path being measured
 wasn't slow; the batch of tests sharing one quota was.
 
-**Run Log — After:**
+**Run Log — After** (full criteria set re-run, three trials each, after the fix):
 
-| Trial | Duration | Verdict |
-|---|---|---|
-| 1 (silk slip dress) | 6.86s | PASS |
-| 2 (graphic tee) | 4.39s | PASS |
-| 3 (denim jacket) | 4.30s | PASS |
+| Criterion | Target | Trial 1 | Trial 2 | Trial 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Vague query triggers clarification, no search | 3/3 | PASS | PASS | PASS | MET (3/3) |
+| 2. Specific query proceeds normally, no clarification | 3/3 | PASS | PASS | PASS | MET (3/3) |
+| 3. Clarifying question is actionable | 3/3 | PASS | PASS | PASS | MET (3/3) |
+| 4. Regression — matching query completes end to end | 3/3 | PASS | PASS | PASS | MET (3/3) |
+| 5. Completed run finishes under 8s, isolated | 3/3 | PASS (6.86s) | PASS (4.39s) | PASS (4.30s) | MET (3/3) |
 
-**Did it help, and how do I know:** Yes — all 3 trials passed under 8s
-with no rate-limit wait appearing in the trace, confirming the diagnosis:
-once the quota-sharing was removed, the extension's real per-request
-latency sits comfortably under target (max observed 6.86s vs. an 8s
-bound). This cost nothing elsewhere — it only changed how the test was
-run, not the system itself.
+Real output for criterion 5's isolated re-run, produced by
+`capstone_eval_latency.py`:
+```
+1.   6.86s  PASS  completed  silk slip dress in midi length under $40
+2.   4.39s  PASS  completed  vintage graphic tee under $30
+3.   4.30s  PASS  completed  denim jacket under $50
+```
+Criteria 1–4 were unaffected by the fix (the change only touched how the
+latency trials were run, not the vagueness check or the search/outfit/
+fit-card pipeline), and re-confirming them in the same session showed the
+same results as the Before run.
+
+**Did it help, and how do I know:** Yes — all 3 latency trials passed
+under 8s with no rate-limit wait appearing in the trace, confirming the
+diagnosis: once the quota-sharing was removed, the extension's real
+per-request latency sits comfortably under target (max observed 6.86s vs.
+an 8s bound). This cost nothing elsewhere — it only changed how the test
+was run, not the system itself, and criteria 1–4 held steady across both
+runs.
 
 **What's Still Broken**
 
@@ -769,6 +824,47 @@ the honest fix was to split the test into two processes, which works but
 means my full criteria set can't be verified end-to-end in a single
 command. That's a testing-infrastructure gap, not a system gap, but it's
 the one thing worth tightening next.
+
+**Stretch — Load Observation**
+
+Ran 10 queries back-to-back with no delay (`load_test.py`), to observe
+behavior under burst load versus the normal single-query pacing used
+elsewhere in this unit's testing:
+```
+ 1.   2.82s  ok      vintage graphic tee under $30
+ 2.   2.26s  ok      90s track jacket in size M
+ 3.   5.46s  ok      denim jacket under $50
+ 4.   4.82s  ok      leather belt
+ 5.   4.71s  ok      oversized cardigan under $40
+ 6.   2.00s  ok      vintage graphic tee under $30
+ 7.   2.04s  ok      90s track jacket in size M
+ 8.   2.16s  ok      denim jacket under $50
+ 9.   2.09s  ok      leather belt
+10.   2.08s  ok      oversized cardigan under $40
+
+Total: 30.45s for 10 runs
+```
+All 10 completed with no errors and no rate-limit pause triggered — 10
+requests in ~30s stays under the 15-per-minute quota, so nothing changed
+at this burst level. That's a real, measured finding ("nothing changed")
+rather than an assumption: the genuinely higher burst that does trigger
+pacing (15+ requests inside one minute) is what's visible elsewhere in
+this unit's testing, where running the full 15-scenario batch back to
+back did hit `[rate limit] ... Waiting 22s`.
+
+**Stretch — Latency Breakdown**
+
+From the per-stage data in Instrumentation above: `search_listings` (avg
+1.521s, n=20) is the single most expensive non-model stage, and
+`suggest_outfit` (avg 0.962s, max 3.368s, n=18) is the most expensive
+model-calling stage. Together these two stages account for the majority
+of a completed run's ~3.3s average total duration (`run` event,
+avg=3.296s), with `create_fit_card` (avg 0.364s) contributing much less,
+and the near-instant `parse_query`/`vagueness_check` stages (both under
+0.002s average) contributing essentially nothing. `search_listings`
+dominates on wall-clock time, but it's a plain data lookup with no model
+call — `suggest_outfit`'s higher max (3.368s) shows the model call is the
+single biggest source of variance in a run's total time.
 
 **How I Used AI**
 
